@@ -1,0 +1,85 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate problems.json and JS syntax
+        run: node scripts/validate.mjs
+
+  deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      # Firebase web config lives in repo *Variables* (it is public by design).
+      FB_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FB_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+      FB_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FB_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      # Optional: service-account JSON (a *Secret*) to auto-deploy firestore.rules.
+      FB_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site (only the files that should be public)
+        run: |
+          mkdir _site
+          cp index.html styles.css app.js cloud.js firebase-config.js service-worker.js manifest.webmanifest problems.json _site/
+          cp -r icons _site/icons
+
+      - name: Inject Firebase config
+        run: |
+          if [ -z "$FB_API_KEY" ]; then
+            echo "::warning::FIREBASE_* variables not set - deploying in this-browser-only mode."
+            exit 0
+          fi
+          cat > _site/firebase-config.js <<CFG
+          export const firebaseConfig = {
+            apiKey: "$FB_API_KEY",
+            authDomain: "$FB_AUTH_DOMAIN",
+            projectId: "$FB_PROJECT_ID",
+            appId: "$FB_APP_ID",
+          };
+          CFG
+          cat _site/firebase-config.js | sed -E 's/(apiKey: ").{6}.*(")/\1******\2/'
+
+      - name: Deploy Firestore rules (optional)
+        if: ${{ env.FB_SERVICE_ACCOUNT != '' && env.FB_PROJECT_ID != '' }}
+        run: |
+          printf '%s' "$FB_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" \
+            npx --yes firebase-tools@14 deploy --only firestore:rules --project "$FB_PROJECT_ID" --non-interactive
+          rm -f "$RUNNER_TEMP/sa.json"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Private profile
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['username', 'displayName', 'createdAt'])
+        && request.resource.data.username.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if isOwner(uid);
+    }
+
+    // Public leaderboard row (counts only)
+    match /leaderboard/{uid} {
+      allow read: if true;
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['username', 'solved', 'review', 'starred', 'updatedAt'])
+        && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.solved is int && request.resource.data.solved >= 0 && request.resource.data.solved <= 5000
+        && request.resource.data.review is int && request.resource.data.review >= 0 && request.resource.data.review <= 5000
+        && request.resource.data.starred is int && request.resource.data.starred >= 0 && request.resource.data.starred <= 5000;
+      allow delete: if isOwner(uid);
+    }
+
+    // Username uniqueness lock: create-only, so the first claimer wins
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && username.matches('^[a-z0-9_]{3,20}$')
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['uid']);
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // One tiny doc per problem the user touched: { status: 0|1|2, star: bool }
+    match /solved/{uid}/entries/{questionId} {
+      allow read: if true;
+      allow create, update: if isOwner(uid)
+        && questionId.matches('^[a-z0-9-]{1,100}$')
+        && request.resource.data.keys().hasOnly(['status', 'star'])
+        && request.resource.data.status in [0, 1, 2]
+        && request.resource.data.star is bool;
+      allow delete: if isOwner(uid);
+    }
+  }
+}

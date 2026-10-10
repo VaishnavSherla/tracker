@@ -1,0 +1,9 @@
+{
+  "name": "dsa-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "serve": "npx --yes serve ."
+  }
+}
