@@ -48,20 +48,24 @@
 
 <div class="toolbar">
   <div class="toolbar-inner">
-    <input type="search" id="search" placeholder="Search problems…" aria-label="Search problems" autocomplete="off" enterkeyhint="search">
-    <div class="chips" role="toolbar" aria-label="Filters">
-      <div class="chip-group" role="group" aria-label="Status">
-        <button class="chip" type="button" data-status="all">All</button>
-        <button class="chip" type="button" data-status="0">Todo</button>
-        <button class="chip" type="button" data-status="1">Review</button>
-        <button class="chip" type="button" data-status="2">Done</button>
-      </div>
+    <div class="tb-row">
+      <input type="search" id="search" placeholder="Search problems or sections…" aria-label="Search problems" autocomplete="off" enterkeyhint="search">
+      <button class="chip chip-fold" type="button" id="foldBtn">Collapse all</button>
+    </div>
+    <div class="tb-row">
+      <select class="sel" id="statusFilter" aria-label="Filter by status">
+        <option value="all">All status</option>
+        <option value="0">Todo</option>
+        <option value="1">Review</option>
+        <option value="2">Done</option>
+      </select>
+      <select class="sel" id="diffFilter" aria-label="Filter by difficulty">
+        <option value="all">All levels</option>
+        <option value="E">Easy</option>
+        <option value="M">Medium</option>
+        <option value="H">Hard</option>
+      </select>
       <button class="chip chip-star" type="button" id="starOnly" aria-pressed="false">★ Starred</button>
-      <div class="chip-group" role="group" aria-label="Difficulty">
-        <button class="chip chip-E" type="button" data-diff="E">Easy</button>
-        <button class="chip chip-M" type="button" data-diff="M">Medium</button>
-        <button class="chip chip-H" type="button" data-diff="H">Hard</button>
-      </div>
     </div>
   </div>
 </div>
@@ -87,7 +91,6 @@
       <button class="menu-item" type="button" id="importBtn"><i>📂</i> <span>Import file</span></button>
       <input type="file" id="importFile" class="file-input" accept="application/json">
       <button class="menu-item" type="button" id="exportBtn"><i>💾</i> <span>Export progress</span></button>
-      <button class="menu-item" type="button" id="collapseAllBtn"><i>↕</i> <span>Collapse all</span></button>
       <button class="menu-item danger" type="button" id="resetBtn"><i>🗑</i> <span>Reset progress</span></button>
     </div>
     <p class="hint">Sync: copy the script, run it in the console on leetcode.com while signed in, then choose “Paste solved list”.</p>

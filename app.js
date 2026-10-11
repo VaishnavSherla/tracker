@@ -189,7 +189,7 @@ function refreshStats() {
   });
 }
 
-function buildRow(slug, title, diff) {
+function buildRow(slug, title, diff, catName, stageTitle) {
   const el = document.createElement('div');
   el.className = 'row';
   el.dataset.slug = slug;
@@ -228,7 +228,8 @@ function buildRow(slug, title, diff) {
   };
 
   el.append(statusBtn, link, d, starBtn);
-  rows.set(slug, { el, statusBtn, starBtn, title });
+  const hay = norm(`${title} ${catName} ${stageTitle}`);
+  rows.set(slug, { el, statusBtn, starBtn, title, hay, words: hay.split(' ') });
   paintRow(slug);
   return el;
 }
@@ -256,7 +257,7 @@ function buildCategory(cat, stageTitle) {
   };
   const body = document.createElement('div');
   body.className = 'rows';
-  cat.items.forEach(([slug, title, diff]) => body.appendChild(buildRow(slug, title, diff)));
+  cat.items.forEach(([slug, title, diff]) => body.appendChild(buildRow(slug, title, diff, cat.name, stageTitle)));
   el.append(head, body);
   catViews.push({ cat, el, stageTitle });
   return el;
@@ -308,18 +309,53 @@ let activeStatus = preferences.status, activeDiff = preferences.difficulty;
 let starOnly = Boolean(preferences.starOnly), query = preferences.search;
 
 function updateCollapseButton() {
-  const collapsed = SECTIONS.length > 0 && SECTIONS.every(s => preferences.collapsedStages[s.title]);
-  $('collapseAllBtn').lastElementChild.textContent = collapsed ? 'Expand all' : 'Collapse all';
+  const allCollapsed = SECTIONS.length > 0 && SECTIONS.every(s => preferences.collapsedStages[s.title]);
+  $('foldBtn').textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+}
+
+// ---------- Search ----------
+// Matches problem titles AND their category / section names ("graphs", "core structures", "dp", "two pointers").
+// If nothing matches exactly, falls back to typo-tolerant matching ("fpundtions", "ggraphs", "stcu").
+const norm = s => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function isSubsequence(small, big) {
+  let i = 0;
+  for (const ch of big) if (ch === small[i] && ++i === small.length) return true;
+  return false;
+}
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function fuzzyToken(tok, r) {
+  if (tok.length < 3) return false;
+  const maxEdits = tok.length >= 8 ? 2 : tok.length >= 5 ? 1 : 0;
+  return r.words.some(w =>
+    (w[0] === tok[0] && isSubsequence(tok, w)) ||                              // "stcu" -> "structures"
+    (maxEdits > 0 && Math.abs(w.length - tok.length) <= maxEdits && editDistance(tok, w) <= maxEdits)); // typos
+}
+function buildMatcher(q) {
+  const tokens = norm(q).split(' ').filter(Boolean);
+  if (!tokens.length) return () => true;
+  const exact = r => tokens.every(t => r.hay.includes(t));
+  let anyExact = false;
+  for (const r of rows.values()) if (exact(r)) { anyExact = true; break; }
+  return anyExact ? exact : r => tokens.every(t => r.hay.includes(t) || fuzzyToken(t, r));
 }
 
 function applyFilters() {
   main.classList.toggle('searching', Boolean(query));
-  rows.forEach(({ el }) => {
-    let show = true;
+  const matches = buildMatcher(query);
+  rows.forEach(r => {
+    const el = r.el;
+    let show = matches(r);
     if (activeStatus !== 'all' && el.dataset.status !== activeStatus) show = false;
     if (activeDiff !== 'all' && el.dataset.diff !== activeDiff) show = false;
     if (starOnly && el.dataset.star !== '1') show = false;
-    if (query && !el.dataset.title.includes(query)) show = false;
     el.classList.toggle('hidden', !show);
   });
   catViews.forEach(({ el }) => { el.hidden = el.querySelector('.row:not(.hidden)') === null; });
@@ -328,22 +364,42 @@ function applyFilters() {
 }
 
 function bindFilters() {
-  const search = $('search');
-  const statusChips = [...document.querySelectorAll('.chip[data-status]')];
-  const diffChips = [...document.querySelectorAll('.chip[data-diff]')];
+  const search = $('search'), statusSel = $('statusFilter'), diffSel = $('diffFilter'), starBtn = $('starOnly');
   const sync = () => {
-    statusChips.forEach(c => { const on = c.dataset.status === activeStatus; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); });
-    diffChips.forEach(c => { const on = c.dataset.diff === activeDiff; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); });
-    $('starOnly').classList.toggle('active', starOnly);
-    $('starOnly').setAttribute('aria-pressed', String(starOnly));
+    statusSel.value = activeStatus; diffSel.value = activeDiff;
+    statusSel.classList.toggle('active', activeStatus !== 'all');
+    diffSel.classList.toggle('active', activeDiff !== 'all');
+    starBtn.classList.toggle('active', starOnly);
+    starBtn.setAttribute('aria-pressed', String(starOnly));
   };
   search.value = query;
   search.addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); preferences.search = query; savePreferences(); applyFilters(); });
-  statusChips.forEach(c => c.addEventListener('click', () => { activeStatus = c.dataset.status; preferences.status = activeStatus; savePreferences(); sync(); applyFilters(); }));
-  diffChips.forEach(c => c.addEventListener('click', () => { activeDiff = activeDiff === c.dataset.diff ? 'all' : c.dataset.diff; preferences.difficulty = activeDiff; savePreferences(); sync(); applyFilters(); }));
-  $('starOnly').addEventListener('click', () => { starOnly = !starOnly; preferences.starOnly = starOnly; savePreferences(); sync(); applyFilters(); });
+  statusSel.addEventListener('change', () => { activeStatus = statusSel.value; preferences.status = activeStatus; savePreferences(); sync(); applyFilters(); });
+  diffSel.addEventListener('change', () => { activeDiff = diffSel.value; preferences.difficulty = activeDiff; savePreferences(); sync(); applyFilters(); });
+  starBtn.addEventListener('click', () => { starOnly = !starOnly; preferences.starOnly = starOnly; savePreferences(); sync(); applyFilters(); });
+  $('foldBtn').addEventListener('click', toggleFoldAll);
   sync();
   applyFilters();
+}
+
+/** One button: collapses every stage, or (if all are already collapsed) expands every stage and category. */
+function toggleFoldAll() {
+  const collapse = !SECTIONS.every(s => preferences.collapsedStages[s.title]);
+  SECTIONS.forEach(s => { preferences.collapsedStages[s.title] = collapse; });
+  stageViews.forEach(({ body, head }) => {
+    body.classList.toggle('collapsed', collapse);
+    head.querySelector('.chev').classList.toggle('collapsed-chev', collapse);
+    head.setAttribute('aria-expanded', String(!collapse));
+  });
+  if (!collapse) {
+    catViews.forEach(({ cat, el, stageTitle }) => {
+      el.classList.remove('collapsed');
+      el.querySelector('.cat-head').setAttribute('aria-expanded', 'true');
+      preferences.collapsedCategories[`${stageTitle}::${cat.name}`] = false;
+    });
+  }
+  savePreferences();
+  updateCollapseButton();
 }
 
 // ---------- Dialogs ----------
@@ -420,17 +476,6 @@ menuAction('resetBtn', () => {
   }
   repaint();
   scheduleBoard();
-});
-menuAction('collapseAllBtn', () => {
-  const collapse = !SECTIONS.every(s => preferences.collapsedStages[s.title]);
-  SECTIONS.forEach(s => { preferences.collapsedStages[s.title] = collapse; });
-  stageViews.forEach(({ body, head }) => {
-    body.classList.toggle('collapsed', collapse);
-    head.querySelector('.chev').classList.toggle('collapsed-chev', collapse);
-    head.setAttribute('aria-expanded', String(!collapse));
-  });
-  savePreferences();
-  updateCollapseButton();
 });
 menuAction('syncBtn', async () => {
   try {

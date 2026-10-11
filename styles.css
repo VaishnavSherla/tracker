@@ -38,21 +38,22 @@ button{font:inherit;color:inherit;cursor:pointer;}
 /* ---------- Sticky toolbar ---------- */
 .toolbar{position:sticky;top:0;z-index:20;background:rgba(27,28,29,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding-top:var(--sat);}
 .toolbar-inner{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;flex-direction:column;gap:8px;}
+.tb-row{display:flex;align-items:center;gap:8px;min-width:0;}
 input[type=search],input[type=text],input[type=email],input[type=password]{
   width:100%;height:42px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:0 12px;border-radius:10px;font:inherit;font-size:16px;appearance:none;-webkit-appearance:none;}
-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+input:focus-visible,.sel:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 input[type=search]::-webkit-search-cancel-button{filter:invert(.7);}
-.chips{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:1px 0;margin:0 -20px;padding-left:20px;padding-right:20px;}
-.chips::-webkit-scrollbar{display:none;}
-.chip-group{display:flex;gap:2px;padding:3px;background:#1e2122;border:1px solid var(--border);border-radius:10px;flex:none;}
-.chip{flex:none;height:32px;padding:0 12px;border:1px solid transparent;background:transparent;color:var(--sub);border-radius:7px;font-size:13px;white-space:nowrap;transition:background .15s,color .15s,border-color .15s;}
-.chip:hover{color:var(--text);}
-.chip.active{background:#15382d;color:#5ef0b8;border-color:#1f6a50;font-weight:650;}
-.chip-star{border-color:var(--border);background:var(--panel);height:38px;border-radius:10px;}
-.chip-star.active{color:var(--gold);border-color:#68552b;background:#282216;}
-.chip-E.active{background:#0f3330;border-color:#1d6a64;color:var(--easy);}
-.chip-M.active{background:#33270f;border-color:#6a5220;color:var(--medium);}
-.chip-H.active{background:#361818;border-color:#6d2b2b;color:var(--hard);}
+.tb-row input[type=search]{flex:1;min-width:0;}
+.sel,.chip{height:40px;border:1px solid var(--border);background-color:var(--panel);color:var(--sub);border-radius:10px;font-size:14px;white-space:nowrap;transition:background .15s,color .15s,border-color .15s;}
+.sel{flex:1 1 0;min-width:0;appearance:none;-webkit-appearance:none;padding:0 30px 0 12px;font-family:inherit;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0a3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:14px;}
+.sel option{background:#232627;color:#f4f5f5;}
+.sel.active{background-color:#15382d;border-color:#1d6b52;color:#5ef0b8;font-weight:650;}
+.chip{flex:none;padding:0 13px;cursor:pointer;}
+.chip:hover,.sel:hover{border-color:#5a6164;color:var(--text);}
+.chip-fold{color:var(--text);}
+.chip-star.active{color:var(--gold);border-color:#68552b;background-color:#282216;}
 
 /* ---------- List ---------- */
 main{max-width:1180px;margin:18px auto 40px;padding:0 20px;}
@@ -147,16 +148,17 @@ dialog.sheet::backdrop{background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(2p
 @media(min-width:700px){
   dialog.sheet{inset:0;margin:auto;width:min(480px,calc(100vw - 32px));height:fit-content;}
   .sheet-body{border-radius:18px;border-bottom:1px solid var(--border);padding-bottom:18px;max-height:80vh;}
-  .toolbar-inner{flex-direction:row;align-items:center;}
-  .toolbar-inner input[type=search]{max-width:300px;}
-  .chips{margin:0;padding:0;flex:1;}
+  .toolbar-inner{flex-direction:row;align-items:center;gap:10px;}
+  .tb-row:first-child{flex:0 1 420px;}
+  .tb-row:last-child{flex:1;}
+  .sel{flex:0 0 150px;}
 }
 
 /* ---------- Phones ---------- */
 @media(max-width:600px){
   .top{padding-left:16px;padding-right:16px;}
   .toolbar-inner{padding:8px 16px;}
-  .chips{margin:0 -16px;padding-left:16px;padding-right:16px;}
+  .sel{font-size:16px;}
   main{padding:0 12px;margin-top:14px;}
   footer{padding-left:16px;padding-right:16px;}
   .eyebrow{display:none;}
