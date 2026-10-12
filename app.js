@@ -140,6 +140,7 @@ function applyChanges(changes) {
   if (user && cloud) cloud.saveMany(user.uid, cloudChanges).catch(syncError);
   else saveGuest();
   repaint(Object.keys(changes));
+  if (Object.keys(changes).length > 1) applyFilters(); // bulk (import etc.); single taps keep the row in place
   scheduleBoard();
 }
 
@@ -165,12 +166,19 @@ function repaint(slugs) {
 function refreshStats() {
   const items = allItems();
   let done = 0, review = 0, star = 0;
-  items.forEach(([slug]) => {
+  const lv = { E: [0, 0], M: [0, 0], H: [0, 0] }; // [done, total]
+  items.forEach(([slug, , diff]) => {
     const r = getRec(slug);
     if (r.status === 2) done++;
     if (r.status === 1) review++;
     if (r.star) star++;
+    if (lv[diff]) { lv[diff][1]++; if (r.status === 2) lv[diff][0]++; }
   });
+  for (const d of ['E', 'M', 'H']) {
+    $('lvDone' + d).textContent = lv[d][0];
+    $('lvTot' + d).textContent = lv[d][1];
+    $('lvBar' + d).style.width = (lv[d][1] ? lv[d][0] / lv[d][1] * 100 : 0) + '%';
+  }
   $('statDone').textContent = done;
   $('statTotal').textContent = items.length;
   $('statReview').textContent = review;
@@ -348,6 +356,7 @@ function buildMatcher(q) {
 }
 
 function applyFilters() {
+  if (!rows.size) return;
   main.classList.toggle('searching', Boolean(query));
   const matches = buildMatcher(query);
   rows.forEach(r => {
@@ -475,6 +484,7 @@ menuAction('resetBtn', () => {
     saveGuest();
   }
   repaint();
+  applyFilters();
   scheduleBoard();
 });
 menuAction('syncBtn', async () => {
@@ -648,15 +658,21 @@ $('nameForm').addEventListener('submit', async e => {
 
 // ---------- Cloud wiring ----------
 function onEntries(snap) {
+  let external = false; // did anything arrive that differs from what's already on screen?
   snap.docChanges().forEach(ch => {
-    if (ch.type === 'removed') delete state[ch.doc.id];
-    else {
+    const prev = state[ch.doc.id];
+    let next = null;
+    if (ch.type !== 'removed') {
       const d = ch.doc.data();
-      if (d.status || d.star) state[ch.doc.id] = { status: d.status | 0, star: !!d.star };
-      else delete state[ch.doc.id];
+      if (d.status || d.star) next = { status: d.status | 0, star: !!d.star };
     }
+    if ((prev?.status ?? 0) !== (next?.status ?? 0) || Boolean(prev?.star) !== Boolean(next?.star)) external = true;
+    if (next) state[ch.doc.id] = next; else delete state[ch.doc.id];
   });
   repaint();
+  // Re-run filters only for data that came from elsewhere (first load, other device), never for the echo of
+  // your own tap, so a row never jumps out from under your finger.
+  if (external) applyFilters();
   if (!snap.metadata.fromCache) {
     serverSynced = true;
     if (!mergedGuest) { mergedGuest = true; mergeGuest(); }
@@ -675,6 +691,7 @@ function mergeGuest() {
   if (!n) { try { localStorage.removeItem(GUEST_KEY); } catch {} return; }
   Object.entries(add).forEach(([s, r]) => { state[s] = r; });
   repaint();
+  applyFilters();
   cloud.saveMany(user.uid, add)
     .then(() => { try { localStorage.removeItem(GUEST_KEY); } catch {} notify(`Uploaded ${n} problem${n === 1 ? '' : 's'} from this browser to your account.`); })
     .catch(syncError);
@@ -686,9 +703,10 @@ async function onUserChange(u) {
   clearTimeout(boardTimer);
   user = u; profile = null; profileLoaded = false; mergedGuest = false; serverSynced = false; lastBoardKey = '';
   renderAccountBtn();
-  if (!u) { state = loadGuest(); repaint(); return; }
+  if (!u) { state = loadGuest(); repaint(); applyFilters(); return; }
   state = {};
   repaint();
+  applyFilters();
   unsubEntries = cloud.watchEntries(u.uid, onEntries, err => syncError(err));
   try {
     const p = await cloud.loadProfile(u.uid);

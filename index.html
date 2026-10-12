@@ -44,12 +44,17 @@
     <div id="barDone" style="background:var(--accent);width:0%"></div>
     <div id="barReview" style="background:var(--review);width:0%"></div>
   </div>
+  <div class="levels" aria-label="Progress by difficulty">
+    <div class="lv E"><div class="lv-top"><span class="lv-name">Easy</span><span class="lv-count"><b id="lvDoneE">0</b>/<span id="lvTotE">0</span></span></div><div class="lv-bar"><i id="lvBarE"></i></div></div>
+    <div class="lv M"><div class="lv-top"><span class="lv-name">Medium</span><span class="lv-count"><b id="lvDoneM">0</b>/<span id="lvTotM">0</span></span></div><div class="lv-bar"><i id="lvBarM"></i></div></div>
+    <div class="lv H"><div class="lv-top"><span class="lv-name">Hard</span><span class="lv-count"><b id="lvDoneH">0</b>/<span id="lvTotH">0</span></span></div><div class="lv-bar"><i id="lvBarH"></i></div></div>
+  </div>
 </header>
 
 <div class="toolbar">
   <div class="toolbar-inner">
     <div class="tb-row">
-      <input type="search" id="search" placeholder="Search problems or sections…" aria-label="Search problems" autocomplete="off" enterkeyhint="search">
+      <input type="search" id="search" placeholder="Search title or topic…" aria-label="Search problems" autocomplete="off" enterkeyhint="search">
       <button class="chip chip-fold" type="button" id="foldBtn">Collapse all</button>
     </div>
     <div class="tb-row">

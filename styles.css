@@ -35,6 +35,18 @@ button{font:inherit;color:inherit;cursor:pointer;}
 .bar{height:6px;border-radius:9px;background:var(--panel2);overflow:hidden;display:flex;margin-top:9px;}
 .bar div{height:100%;transition:width .2s ease;}
 
+/* ---------- Difficulty breakdown ---------- */
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+.lv{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 10px 9px;min-width:0;}
+.lv-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:12px;}
+.lv-name{font-weight:700;}
+.lv.E .lv-name{color:var(--easy);}.lv.M .lv-name{color:var(--medium);}.lv.H .lv-name{color:var(--hard);}
+.lv-count{color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.lv-count b{color:var(--text);font-size:14px;}
+.lv-bar{height:4px;border-radius:4px;background:var(--panel2);margin-top:7px;overflow:hidden;}
+.lv-bar i{display:block;height:100%;width:0;transition:width .2s ease;}
+.lv.E i{background:var(--easy);}.lv.M i{background:var(--medium);}.lv.H i{background:var(--hard);}
+
 /* ---------- Sticky toolbar ---------- */
 .toolbar{position:sticky;top:0;z-index:20;background:rgba(27,28,29,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding-top:var(--sat);}
 .toolbar-inner{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;flex-direction:column;gap:8px;}
